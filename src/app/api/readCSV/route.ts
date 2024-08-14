@@ -11,7 +11,7 @@ interface JSONRecord {
 export async function GET(req: NextRequest) {
   console.log('Starting JSON processing...');
   try {
-    const filePath = path.join(process.cwd(), 'src', 'data', 'data.json');
+    const filePath = path.join(process.cwd(), 'public', 'data.json');
     console.log('Attempting to read file from:', filePath);
 
     const fileContents = await fs.readFile(filePath, 'utf8');
