@@ -1,5 +1,5 @@
-import { NextResponse, NextRequest } from 'next/server';
-import { promises as fs } from 'fs';
+import { NextRequest, NextResponse } from 'next/server';
+import fs from 'fs/promises';
 import path from 'path';
 import { parse } from 'csv-parse/sync';
 
@@ -41,31 +41,26 @@ function processLeafNode(node: string): string {
 export async function GET(req: NextRequest) {
   console.log('Starting CSV processing...');
   try {
-    // Use process.cwd() to get the correct working directory in Vercel
     const filePath = path.join(process.cwd(), 'src', 'data', 'OpenAI_LeafNodes_ManualDataframe.csv');
     console.log('Attempting to read file from:', filePath);
 
-    // Use asynchronous file reading
     const fileContents = await fs.readFile(filePath, 'utf8');
     console.log('File read successfully. First 100 characters:', fileContents.substring(0, 100));
 
-    // Parse CSV
     const records = parse(fileContents, {
       columns: true,
       skip_empty_lines: true
     }) as CSVRecord[];
     console.log(`Parsed ${records.length} records from CSV`);
 
-    // Process Leaf Nodes
     const processedRecords = records.map(record => ({
       ...record,
       Leaf_Nodes: record.Leaf_Nodes.split(',')
         .map(node => processLeafNode(node.trim()))
-        .filter((value, index, self) => self.indexOf(value) === index) // Remove duplicates
+        .filter((value, index, self) => self.indexOf(value) === index)
         .join(', ')
     }));
 
-    // Extract unique Leaf Nodes
     const uniqueLeafNodes = Array.from(new Set(
       processedRecords.flatMap(record => record.Leaf_Nodes.split(', '))
     )).sort();
@@ -78,6 +73,7 @@ export async function GET(req: NextRequest) {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 's-maxage=3600, stale-while-revalidate',
       },
     });
   } catch (error) {
