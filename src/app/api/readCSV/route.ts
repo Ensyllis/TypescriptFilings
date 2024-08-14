@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
 
 interface JSONRecord {
   Leaf_Nodes: string;
@@ -8,28 +6,42 @@ interface JSONRecord {
   ArticleBody: string;
 }
 
-export async function GET(req: NextRequest) {
-  console.log('Starting JSON processing...');
+let cachedData: { records: JSONRecord[], leafNodes: string[] } | null = null;
+
+async function getData() {
+  if (cachedData) {
+    return cachedData;
+  }
+
+  const url = process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}/data.json` 
+    : 'http://localhost:3000/data.json';
+
   try {
-    const filePath = path.join(process.cwd(), 'public', 'data.json');
-    console.log('Attempting to read file from:', filePath);
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const records = await response.json() as JSONRecord[];
 
-    const fileContents = await fs.readFile(filePath, 'utf8');
-    console.log('File read successfully. First 100 characters:', fileContents.substring(0, 100));
-
-    const records = JSON.parse(fileContents) as JSONRecord[];
-    console.log(`Parsed ${records.length} records from JSON`);
-
-    // Since Leaf_Nodes are already processed, we just need to split them for uniqueness check
     const uniqueLeafNodes = Array.from(new Set(
       records.flatMap(record => record.Leaf_Nodes.split(', '))
     )).sort();
-    console.log(`Extracted ${uniqueLeafNodes.length} unique leaf nodes`);
 
-    return NextResponse.json({
-      records: records,
-      leafNodes: uniqueLeafNodes
-    }, {
+    cachedData = { records, leafNodes: uniqueLeafNodes };
+    return cachedData;
+  } catch (error) {
+    console.error('Error fetching or parsing data.json:', error);
+    throw error;
+  }
+}
+
+export async function GET(req: NextRequest) {
+  console.log('Processing request...');
+  try {
+    const data = await getData();
+
+    return NextResponse.json(data, {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
@@ -37,11 +49,11 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error processing JSON file:', error);
+    console.error('Error processing data:', error);
     if (error instanceof Error) {
-      return NextResponse.json({ error: `Error processing JSON file: ${error.message}` }, { status: 500 });
+      return NextResponse.json({ error: `Error processing data: ${error.message}` }, { status: 500 });
     } else {
-      return NextResponse.json({ error: 'An unknown error occurred while processing the JSON file' }, { status: 500 });
+      return NextResponse.json({ error: 'An unknown error occurred while processing the data' }, { status: 500 });
     }
   }
 }
