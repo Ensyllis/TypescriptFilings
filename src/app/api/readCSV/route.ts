@@ -38,16 +38,23 @@ function processLeafNode(node: string): string {
   return processedNode;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  console.log('Starting CSV processing...');
   try {
+    // Use process.cwd() to get the correct working directory in Vercel
     const filePath = path.join(process.cwd(), 'src', 'data', 'OpenAI_LeafNodes_ManualDataframe.csv');
-    const fileContents = fs.readFileSync(filePath, 'utf8');
+    console.log('Attempting to read file from:', filePath);
+
+    // Use asynchronous file reading
+    const fileContents = await fs.readFile(filePath, 'utf8');
+    console.log('File read successfully. First 100 characters:', fileContents.substring(0, 100));
 
     // Parse CSV
     const records = parse(fileContents, {
       columns: true,
       skip_empty_lines: true
     }) as CSVRecord[];
+    console.log(`Parsed ${records.length} records from CSV`);
 
     // Process Leaf Nodes
     const processedRecords = records.map(record => ({
@@ -62,6 +69,7 @@ export async function GET() {
     const uniqueLeafNodes = Array.from(new Set(
       processedRecords.flatMap(record => record.Leaf_Nodes.split(', '))
     )).sort();
+    console.log(`Extracted ${uniqueLeafNodes.length} unique leaf nodes`);
 
     return NextResponse.json({
       records: processedRecords,
@@ -73,7 +81,11 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error('Error reading or parsing CSV file:', error);
-    return NextResponse.json({ error: 'Error reading or parsing CSV file' }, { status: 500 });
+    console.error('Error processing CSV file:', error);
+    if (error instanceof Error) {
+      return NextResponse.json({ error: `Error processing CSV file: ${error.message}` }, { status: 500 });
+    } else {
+      return NextResponse.json({ error: 'An unknown error occurred while processing the CSV file' }, { status: 500 });
+    }
   }
 }
