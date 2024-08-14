@@ -1,11 +1,7 @@
 {
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next",
-      "config": {
-        "ignoreCommand": "npm run build"
-      }
+  "functions": {
+    "api/*.js": {
+      "maxDuration": 60
     }
-  ]
+  }
 }
