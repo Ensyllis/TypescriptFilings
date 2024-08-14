@@ -13,20 +13,33 @@ async function getData() {
     return cachedData;
   }
 
-  const url = process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}/data.json` 
-    : 'http://localhost:3000/data.json';
+  // Use relative path instead of full URL
+  const url = '/data.json';
+
+  console.log(`Attempting to fetch data from: ${url}`);
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
+    });
+    
     if (!response.ok) {
+      console.error(`Fetch error: ${response.status} ${response.statusText}`);
+      console.error('Response headers:', Object.fromEntries(response.headers.entries()));
       throw new Error(`HTTP error! status: ${response.status}`);
     }
+    
     const records = await response.json() as JSONRecord[];
+
+    console.log(`Successfully fetched ${records.length} records`);
 
     const uniqueLeafNodes = Array.from(new Set(
       records.flatMap(record => record.Leaf_Nodes.split(', '))
     )).sort();
+
+    console.log(`Extracted ${uniqueLeafNodes.length} unique leaf nodes`);
 
     cachedData = { records, leafNodes: uniqueLeafNodes };
     return cachedData;
@@ -51,9 +64,14 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('Error processing data:', error);
     if (error instanceof Error) {
-      return NextResponse.json({ error: `Error processing data: ${error.message}` }, { status: 500 });
+      return NextResponse.json({ 
+        error: `Error processing data: ${error.message}`,
+        stack: error.stack 
+      }, { status: 500 });
     } else {
-      return NextResponse.json({ error: 'An unknown error occurred while processing the data' }, { status: 500 });
+      return NextResponse.json({ 
+        error: 'An unknown error occurred while processing the data' 
+      }, { status: 500 });
     }
   }
 }
