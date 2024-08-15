@@ -1,5 +1,3 @@
-'use client'
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -10,7 +8,6 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ onSelectLeafNode, selectedLeafNode }) => {
-
   const [leafNodes, setLeafNodes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,12 +18,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectLeafNode, selectedLeafNode })
 
   const fetchLeafNodes = async () => {
     try {
-      const response = await fetch('/api/readMongoDB');  // Updated API endpoint
+      const response = await fetch('/api/getLeafNodes');
       if (!response.ok) {
-        throw new Error('Failed to fetch MongoDB data');
+        throw new Error('Failed to fetch leaf nodes');
       }
       const data = await response.json();
-      setLeafNodes(data.leafNodes);
+      setLeafNodes(data);
     } catch (err) {
       console.error('Error fetching Leaf Nodes:', err);
       setError('Failed to load Leaf Nodes. Please try again later.');
@@ -54,8 +51,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectLeafNode, selectedLeafNode })
             className={cn(
               "w-full justify-start p-2 text-left whitespace-normal break-words",
               selectedLeafNode === node
-                ? "dark:bg-white dark:text-gray-800" // Selected state in dark mode
-                : "dark:text-white dark:hover:bg-gray-700" // Unselected state in dark mode
+                ? "dark:bg-white dark:text-gray-800"
+                : "dark:text-white dark:hover:bg-gray-700"
             )}
             onClick={() => onSelectLeafNode(node)}
           >

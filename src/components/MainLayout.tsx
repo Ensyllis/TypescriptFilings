@@ -21,9 +21,7 @@ const MainLayout = () => {
   const [expandAll, setExpandAll] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [aiResponses, setAiResponses] = useState<string[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
-  const [filteredEntries, setFilteredEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingModalOpen, setIsLoadingModalOpen] = useState(false);
@@ -34,33 +32,21 @@ const MainLayout = () => {
     }
   }, [selectedLeafNode]);
 
-  useEffect(() => {
-    if (selectedLeafNode && entries.length > 0) {
-      const filtered = entries.filter(entry => 
-        entry.Leaf_Nodes.split(', ').includes(selectedLeafNode)
-      );
-      setFilteredEntries(filtered);
-    }
-  }, [selectedLeafNode, entries]);
-
   const fetchEntries = async () => {
+    if (!selectedLeafNode) return;
+
     setLoading(true);
     setError(null);
     setIsLoadingModalOpen(true);
     try {
-      const response = await fetch('/api/readMongoDB');  // Updated API endpoint
+      const response = await fetch(`/api/getEntries?leafNode=${encodeURIComponent(selectedLeafNode)}`);
       if (!response.ok) {
-        throw new Error('Failed to fetch MongoDB data');
+        throw new Error('Failed to fetch entries');
       }
       const data = await response.json();
-      
-      const filteredEntries = data.records.filter((entry: Entry) => 
-        entry.Leaf_Nodes.split(', ').includes(selectedLeafNode!)
-      );
-      
-      setEntries(filteredEntries);
+      setEntries(data);
     } catch (err) {
-      console.error('Error fetching MongoDB data:', err);
+      console.error('Error fetching entries:', err);
       setError('Failed to load entries. Please try again later.');
     } finally {
       setLoading(false);
@@ -72,7 +58,7 @@ const MainLayout = () => {
     setIsProcessing(true);
     setIsLoadingModalOpen(true);
     try {
-      const articleBodies = filteredEntries.map(entry => entry.ArticleBody);
+      const articleBodies = entries.map(entry => entry.ArticleBody);
       const response = await fetch('/api/AnthropicAPI', {
         method: 'POST',
         headers: {
@@ -85,28 +71,28 @@ const MainLayout = () => {
       });
   
       if (!response.ok) {
-        throw new Error('Failed to process articles');
+        const errorData = await response.json();
+        throw new Error(`Failed to process articles: ${response.status} ${response.statusText}. Details: ${JSON.stringify(errorData)}`);
       }
   
       const data = await response.json();
       
-      const updatedEntries = filteredEntries.map((entry, index) => ({
+      const updatedEntries = entries.map((entry, index) => ({
         ...entry,
         AnthropicResult: data.results[index],
       }));
       
-      setFilteredEntries(updatedEntries);
+      setEntries(updatedEntries);
       console.log('Processed entries:', updatedEntries);
     } catch (error) {
       console.error('Error processing articles:', error);
+      // Optionally, you can set an error state here to display to the user
+      // setError(error.message);
     } finally {
       setIsProcessing(false);
       setIsLoadingModalOpen(false);
     }
   };
-
-  console.log('Current AI responses:', aiResponses);
-
   return (
     <div className={`flex h-screen bg-gray-100 dark:bg-gray-900 ${darkMode ? 'dark' : ''}`}>
       {/* Mobile Sidebar */}
@@ -145,7 +131,7 @@ const MainLayout = () => {
         <MainContent 
           selectedLeafNode={selectedLeafNode}
           expandAll={expandAll}
-          entries={filteredEntries}
+          entries={entries}
         />
       </div>
 
