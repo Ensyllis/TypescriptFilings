@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { MongoClient } from 'mongodb';
 
 interface JSONRecord {
   Leaf_Nodes: string;
@@ -8,21 +9,21 @@ interface JSONRecord {
 
 let cachedData: { records: JSONRecord[], leafNodes: string[] } | null = null;
 
+// MongoDB connection string
+const uri = process.env.MONGODB_URI;
+const client = new MongoClient(uri!);
+
 async function getData() {
   if (cachedData) {
     return cachedData;
   }
 
-  const url = process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}/data.json` 
-    : 'http://localhost:3000/data.json';
-
   try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const records = await response.json() as JSONRecord[];
+    await client.connect();
+    const database = client.db('Bayesian');
+    const collection = database.collection<JSONRecord>('TypescriptFiling');
+
+    const records = await collection.find({}).toArray();
 
     const uniqueLeafNodes = Array.from(new Set(
       records.flatMap(record => record.Leaf_Nodes.split(', '))
@@ -31,8 +32,10 @@ async function getData() {
     cachedData = { records, leafNodes: uniqueLeafNodes };
     return cachedData;
   } catch (error) {
-    console.error('Error fetching or parsing data.json:', error);
+    console.error('Error fetching data from MongoDB:', error);
     throw error;
+  } finally {
+    await client.close();
   }
 }
 

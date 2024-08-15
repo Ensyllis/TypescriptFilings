@@ -21,9 +21,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectLeafNode, selectedLeafNode })
 
   const fetchLeafNodes = async () => {
     try {
-      const response = await fetch('/api/readCSV');
+      const response = await fetch('/api/readMongoDB');  // Updated API endpoint
       if (!response.ok) {
-        throw new Error('Failed to fetch CSV data');
+        throw new Error('Failed to fetch MongoDB data');
       }
       const data = await response.json();
       setLeafNodes(data.leafNodes);

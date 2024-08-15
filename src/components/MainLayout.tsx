@@ -48,9 +48,9 @@ const MainLayout = () => {
     setError(null);
     setIsLoadingModalOpen(true);
     try {
-      const response = await fetch('/api/readCSV');
+      const response = await fetch('/api/readMongoDB');  // Updated API endpoint
       if (!response.ok) {
-        throw new Error('Failed to fetch CSV data');
+        throw new Error('Failed to fetch MongoDB data');
       }
       const data = await response.json();
       
@@ -60,7 +60,7 @@ const MainLayout = () => {
       
       setEntries(filteredEntries);
     } catch (err) {
-      console.error('Error fetching CSV data:', err);
+      console.error('Error fetching MongoDB data:', err);
       setError('Failed to load entries. Please try again later.');
     } finally {
       setLoading(false);
