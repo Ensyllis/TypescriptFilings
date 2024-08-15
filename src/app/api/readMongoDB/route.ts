@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { MongoClient } from 'mongodb';
+import clientPromise from '@/lib/dbConnect';  // Adjust the import path as needed
 
 interface JSONRecord {
   Leaf_Nodes: string;
@@ -9,19 +9,15 @@ interface JSONRecord {
 
 let cachedData: { records: JSONRecord[], leafNodes: string[] } | null = null;
 
-// MongoDB connection string
-const uri = process.env.MONGODB_URI;
-const client = new MongoClient(uri!);
-
 async function getData() {
   if (cachedData) {
     return cachedData;
   }
 
   try {
-    await client.connect();
-    const database = client.db('Bayesian');
-    const collection = database.collection<JSONRecord>('TypescriptFiling');
+    const client = await clientPromise;
+    const db = client.db('Bayesian');  // Replace with your actual database name
+    const collection = db.collection<JSONRecord>('TypescriptFiling');  // Replace with your actual collection name
 
     const records = await collection.find({}).toArray();
 
@@ -34,8 +30,6 @@ async function getData() {
   } catch (error) {
     console.error('Error fetching data from MongoDB:', error);
     throw error;
-  } finally {
-    await client.close();
   }
 }
 
