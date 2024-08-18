@@ -2,13 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+interface LeafNodeInfo {
+  name: string;
+  percentage: string;
+}
+
 interface SidebarProps {
   onSelectLeafNode: (leafNode: string) => void;
   selectedLeafNode: string | null;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ onSelectLeafNode, selectedLeafNode }) => {
-  const [leafNodes, setLeafNodes] = useState<string[]>([]);
+  const [leafNodes, setLeafNodes] = useState<LeafNodeInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,17 +51,22 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectLeafNode, selectedLeafNode })
       <div className="flex-grow overflow-y-auto">
         {leafNodes.map((node) => (
           <Button
-            key={node}
-            variant={selectedLeafNode === node ? "default" : "ghost"}
+            key={node.name}
+            variant={selectedLeafNode === node.name ? "default" : "ghost"}
             className={cn(
               "w-full justify-start p-2 text-left whitespace-normal break-words",
-              selectedLeafNode === node
+              selectedLeafNode === node.name
                 ? "dark:bg-white dark:text-gray-800"
                 : "dark:text-white dark:hover:bg-gray-700"
             )}
-            onClick={() => onSelectLeafNode(node)}
+            onClick={() => onSelectLeafNode(node.name)}
           >
-            {node}
+            <span className="flex justify-between w-full">
+              <span>{node.name}</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {node.percentage}%
+              </span>
+            </span>
           </Button>
         ))}
       </div>

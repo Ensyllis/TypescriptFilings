@@ -12,7 +12,12 @@ export async function GET() {
 
     const leafNodes = await collection.find({}).toArray();
 
-    return NextResponse.json(leafNodes.map(node => node.name), { status: 200 });
+    const formattedLeafNodes = leafNodes.map(node => ({
+      name: node.name,
+      percentage: node.percentage.toFixed(2) // Round to 2 decimal places
+    }));
+
+    return NextResponse.json(formattedLeafNodes, { status: 200 });
   } catch (error) {
     console.error('Failed to fetch leaf nodes:', error);
     return NextResponse.json({ error: 'Failed to fetch leaf nodes' }, { status: 500 });

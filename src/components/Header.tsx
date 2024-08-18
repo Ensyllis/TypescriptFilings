@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Moon, Sun, Plus, Trash2 } from "lucide-react";
+import { Moon, Sun, Plus, Trash2, Download } from "lucide-react";
 
 interface HeaderProps {
   selectedLeafNode: string | null;
@@ -13,11 +13,19 @@ interface HeaderProps {
   setDarkMode: (dark: boolean) => void;
   onProcessArticles: (prompt: string) => Promise<void>;
   isProcessing: boolean;
+  entries: Entry[];
 }
 
 interface QuestionPair {
   itemName: string;
   question: string;
+}
+
+interface Entry {
+  Leaf_Nodes: string;
+  OpenAI_Summary: string;
+  ArticleBody: string;
+  AnthropicResult?: string;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -27,7 +35,8 @@ const Header: React.FC<HeaderProps> = ({
   darkMode,
   setDarkMode,
   onProcessArticles,
-  isProcessing
+  isProcessing,
+  entries
 }) => {
   const [questionPairs, setQuestionPairs] = useState<QuestionPair[]>([
     { itemName: "", question: "" },
@@ -60,6 +69,25 @@ const Header: React.FC<HeaderProps> = ({
     onProcessArticles(promptString);
   };
 
+  const handleDownloadJSON = () => {
+    const anthropicResults = entries.map(entry => ({
+      Leaf_Nodes: entry.Leaf_Nodes,
+      AnthropicResult: entry.AnthropicResult
+    }));
+
+    const jsonString = JSON.stringify(anthropicResults, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'anthropic_results.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <header className="bg-white dark:bg-gray-800 shadow-md p-4">
       <div className="flex flex-col space-y-4">
@@ -67,6 +95,15 @@ const Header: React.FC<HeaderProps> = ({
           <h1 className="text-2xl font-bold dark:text-white">{selectedLeafNode || 'Select a Leaf Node'}</h1>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
+              <Button
+                onClick={handleDownloadJSON}
+                variant="outline"
+                size="sm"
+                className="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600"
+                disabled={entries.length === 0 || !entries.some(entry => entry.AnthropicResult)}
+              >
+                <Download className="h-4 w-4 mr-2" /> Download JSON
+              </Button>
               <Switch
                 id="expand-all"
                 checked={expandAll}
@@ -107,7 +144,7 @@ const Header: React.FC<HeaderProps> = ({
                 className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border-gray-300 dark:border-gray-600 w-1/3"
               />
               <Input
-                placeholder="e.g., What is the value of the sale?"
+                placeholder="e.g., What is the value of the sale?        (Only respond in $ amounts, Answer None if applicable)"
                 value={pair.question}
                 onChange={(e) => handlePairChange(index, 'question', e.target.value)}
                 className="bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border-gray-300 dark:border-gray-600 w-2/3"

@@ -127,11 +127,13 @@ const MainLayout = () => {
           setDarkMode={setDarkMode}
           onProcessArticles={processArticles}
           isProcessing={isProcessing}
+          entries={entries}
         />
         <MainContent 
           selectedLeafNode={selectedLeafNode}
           expandAll={expandAll}
           entries={entries}
+          darkMode={darkMode}
         />
       </div>
 

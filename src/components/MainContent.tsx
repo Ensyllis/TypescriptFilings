@@ -15,9 +15,10 @@ interface MainContentProps {
   selectedLeafNode: string | null;
   expandAll: boolean;
   entries: Entry[];
+  darkMode: boolean;
 }
 
-const MainContent: React.FC<MainContentProps> = ({ selectedLeafNode, expandAll, entries }) => {
+const MainContent: React.FC<MainContentProps> = ({ selectedLeafNode, expandAll, entries, darkMode }) => {
   const [expandedEntries, setExpandedEntries] = useState<Set<number>>(new Set());
 
   useEffect(() => {
@@ -41,12 +42,21 @@ const MainContent: React.FC<MainContentProps> = ({ selectedLeafNode, expandAll, 
   };
 
   if (!selectedLeafNode) {
-    return <div className="p-4 dark:text-white">Please select a Leaf Node to view entries.</div>;
+    return (
+      <div className={`p-4 ${darkMode ? 'text-white bg-gray-800' : 'text-black bg-white'}`}>
+        Please select a Leaf Node to view entries.
+      </div>
+    );
   }
 
   if (entries.length === 0) {
-    return <div className="p-4 dark:text-white">No entries found for this Leaf Node.</div>;
+    return (
+      <div className={`p-4 ${darkMode ? 'text-white bg-gray-800' : 'text-black bg-white'}`}>
+        No entries found for this Leaf Node.
+      </div>
+    );
   }
+
 
   return (
     <div className="p-4 space-y-4 overflow-auto dark:bg-gray-900">
@@ -54,7 +64,7 @@ const MainContent: React.FC<MainContentProps> = ({ selectedLeafNode, expandAll, 
         <Card key={index} className="overflow-hidden dark:bg-gray-800 dark:text-white">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="dark:text-white">{`Entry ${index + 1}`}</CardTitle>
-            <button 
+            <button
               onClick={() => toggleExpand(index)}
               className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors duration-200"
             >
