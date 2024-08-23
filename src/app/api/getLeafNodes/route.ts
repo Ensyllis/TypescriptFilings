@@ -10,7 +10,8 @@ export async function GET() {
     const database = client.db('Bayesian');
     const collection = database.collection('leaf_nodes');
 
-    const leafNodes = await collection.find({}).toArray();
+    // Add sorting here. Replace 'name' with the field you want to sort by
+    const leafNodes = await collection.find({}).sort({ percentage: -1 }).toArray();
 
     const formattedLeafNodes = leafNodes.map(node => ({
       name: node.name,

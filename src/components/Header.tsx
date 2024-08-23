@@ -14,6 +14,8 @@ interface HeaderProps {
   onProcessArticles: (prompt: string) => Promise<void>;
   isProcessing: boolean;
   entries: Entry[];
+  apiProvider: 'anthropic' | 'openai';
+  setApiProvider: (provider: 'anthropic' | 'openai') => void;
 }
 
 interface QuestionPair {
@@ -25,7 +27,7 @@ interface Entry {
   Leaf_Nodes: string;
   OpenAI_Summary: string;
   ArticleBody: string;
-  AnthropicResult?: string;
+  AIResponse?: string;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -36,7 +38,9 @@ const Header: React.FC<HeaderProps> = ({
   setDarkMode,
   onProcessArticles,
   isProcessing,
-  entries
+  entries,
+  apiProvider,
+  setApiProvider
 }) => {
   const [questionPairs, setQuestionPairs] = useState<QuestionPair[]>([
     { itemName: "", question: "" },
@@ -65,23 +69,45 @@ const Header: React.FC<HeaderProps> = ({
       return acc;
     }, {} as Record<string, string>);
 
-    const promptString = "Respond in a json manner: " + JSON.stringify(jsonPrompt);
+    const promptString = "Respond in a json format: " + JSON.stringify(jsonPrompt);
     onProcessArticles(promptString);
   };
 
   const handleDownloadJSON = () => {
-    const anthropicResults = entries.map(entry => ({
-      Leaf_Nodes: entry.Leaf_Nodes,
-      AnthropicResult: entry.AnthropicResult
-    }));
-
-    const jsonString = JSON.stringify(anthropicResults, null, 2);
+    const resultsData = entries.map(entry => {
+      let extractedValues: any;
+      if (entry.AIResponse) {
+        try {
+          extractedValues = JSON.parse(entry.AIResponse);
+        } catch (error) {
+          console.error('Failed to parse AIResponse:', error);
+          extractedValues = entry.AIResponse;
+        }
+      } else {
+        extractedValues = null;
+      }
+  
+      return {
+        Leaf_Nodes: entry.Leaf_Nodes,
+        Extracted_Values: extractedValues
+      };
+    });
+  
+    const fullResults = {
+      info: {
+        SelectedLeafNode: selectedLeafNode,
+        SelectedAPIProvider: apiProvider
+      },
+      data: resultsData
+    };
+  
+    const jsonString = JSON.stringify(fullResults, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'anthropic_results.json';
+    a.download = 'result.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -100,10 +126,24 @@ const Header: React.FC<HeaderProps> = ({
                 variant="outline"
                 size="sm"
                 className="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600"
-                disabled={entries.length === 0 || !entries.some(entry => entry.AnthropicResult)}
+                disabled={entries.length === 0 || !entries.some(entry => entry.AIResponse)}
               >
                 <Download className="h-4 w-4 mr-2" /> Download JSON
               </Button>
+              <div className="flex items-center space-x-2">
+                  <Switch
+                    id="api-provider"
+                    checked={apiProvider === 'anthropic'}
+                    onCheckedChange={(checked) => setApiProvider(checked ? 'anthropic' : 'openai')}
+                    className="dark:bg-gray-600"
+                  />
+                  <Label 
+                    htmlFor="api-provider" 
+                    className="text-gray-700 dark:text-gray-300 flex items-center cursor-pointer"
+                  >
+                    {apiProvider === 'anthropic' ? 'Anthropic' : 'OpenAI'}
+                  </Label>
+                </div>
               <Switch
                 id="expand-all"
                 checked={expandAll}

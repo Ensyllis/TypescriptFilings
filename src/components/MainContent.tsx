@@ -8,7 +8,7 @@ interface Entry {
   Leaf_Nodes: string;
   OpenAI_Summary: string;
   ArticleBody: string;
-  AnthropicResult?: string;
+  AIResponse?: string;
 }
 
 interface MainContentProps {
@@ -16,9 +16,22 @@ interface MainContentProps {
   expandAll: boolean;
   entries: Entry[];
   darkMode: boolean;
+  currentPage: number;
+  totalPages: number;
+  pageSize: number;
+  apiProvider: 'anthropic' | 'openai';
 }
 
-const MainContent: React.FC<MainContentProps> = ({ selectedLeafNode, expandAll, entries, darkMode }) => {
+const MainContent: React.FC<MainContentProps> = ({ 
+  selectedLeafNode, 
+  expandAll, 
+  entries, 
+  darkMode, 
+  currentPage,
+  totalPages,
+  pageSize,
+  apiProvider
+}) => {
   const [expandedEntries, setExpandedEntries] = useState<Set<number>>(new Set());
 
   useEffect(() => {
@@ -60,10 +73,12 @@ const MainContent: React.FC<MainContentProps> = ({ selectedLeafNode, expandAll, 
 
   return (
     <div className="p-4 space-y-4 overflow-auto dark:bg-gray-900">
-      {entries.map((entry, index) => (
-        <Card key={index} className="overflow-hidden dark:bg-gray-800 dark:text-white">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="dark:text-white">{`Entry ${index + 1}`}</CardTitle>
+      {entries.map((entry, index) => {
+        const entryNumber = (currentPage - 1) * pageSize + index + 1;
+        return (
+          <Card key={index} className="overflow-hidden dark:bg-gray-800 dark:text-white">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="dark:text-white">{`Entry ${entryNumber}`}</CardTitle>
             <button
               onClick={() => toggleExpand(index)}
               className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors duration-200"
@@ -74,10 +89,12 @@ const MainContent: React.FC<MainContentProps> = ({ selectedLeafNode, expandAll, 
           <CardContent>
             <CardDescription className="dark:text-gray-300 mb-4">{entry.OpenAI_Summary}</CardDescription>
             
-            {entry.AnthropicResult && (
+            {entry.AIResponse && (
               <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
-                <h4 className="font-semibold mb-2 dark:text-white">Anthropic Response:</h4>
-                <p className="text-sm whitespace-pre-wrap dark:text-gray-300">{entry.AnthropicResult}</p>
+                <h4 className="font-semibold mb-2 dark:text-white">
+                  {apiProvider === 'openai' ? 'OpenAI' : 'Anthropic'} Response:
+                </h4>
+                <p className="text-sm whitespace-pre-wrap dark:text-gray-300">{entry.AIResponse}</p>
               </div>
             )}
             
@@ -89,7 +106,8 @@ const MainContent: React.FC<MainContentProps> = ({ selectedLeafNode, expandAll, 
             )}
           </CardContent>
         </Card>
-      ))}
+        );
+      })}
     </div>
   );
 };

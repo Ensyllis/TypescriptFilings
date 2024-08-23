@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
+import Pagination from './Pagination';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import MainContent from './MainContent';
@@ -13,7 +14,7 @@ interface Entry {
   Leaf_Nodes: string;
   OpenAI_Summary: string;
   ArticleBody: string;
-  AnthropicResult?: string;
+  AIResponse?: string;
 }
 
 const MainLayout = () => {
@@ -25,26 +26,31 @@ const MainLayout = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingModalOpen, setIsLoadingModalOpen] = useState(false);
+  const [apiProvider, setApiProvider] = useState<'anthropic' | 'openai'>('openai');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [pageSize, setPageSize] = useState(100);
 
   useEffect(() => {
     if (selectedLeafNode) {
       fetchEntries();
     }
-  }, [selectedLeafNode]);
+  }, [selectedLeafNode, currentPage, pageSize]);
 
   const fetchEntries = async () => {
     if (!selectedLeafNode) return;
-
+  
     setLoading(true);
     setError(null);
     setIsLoadingModalOpen(true);
     try {
-      const response = await fetch(`/api/getEntries?leafNode=${encodeURIComponent(selectedLeafNode)}`);
+      const response = await fetch(`/api/getEntries?leafNode=${encodeURIComponent(selectedLeafNode)}&page=${currentPage}&pageSize=${pageSize}`);
       if (!response.ok) {
         throw new Error('Failed to fetch entries');
       }
       const data = await response.json();
-      setEntries(data);
+      setEntries(data.entries);
+      setTotalPages(data.totalPages);
     } catch (err) {
       console.error('Error fetching entries:', err);
       setError('Failed to load entries. Please try again later.');
@@ -54,12 +60,16 @@ const MainLayout = () => {
     }
   };
 
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
+
   const processArticles = async (prompt: string) => {
     setIsProcessing(true);
     setIsLoadingModalOpen(true);
     try {
       const articleBodies = entries.map(entry => entry.ArticleBody);
-      const response = await fetch('/api/AnthropicAPI', {
+      const response = await fetch(`/api/${apiProvider === 'openai' ? 'OpenAIAPI' : 'AnthropicAPI'}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,7 +89,7 @@ const MainLayout = () => {
       
       const updatedEntries = entries.map((entry, index) => ({
         ...entry,
-        AnthropicResult: data.results[index],
+        AIResponse: data.results[index],
       }));
       
       setEntries(updatedEntries);
@@ -93,6 +103,7 @@ const MainLayout = () => {
       setIsLoadingModalOpen(false);
     }
   };
+
   return (
     <div className={`flex h-screen bg-gray-100 dark:bg-gray-900 ${darkMode ? 'dark' : ''}`}>
       {/* Mobile Sidebar */}
@@ -118,7 +129,7 @@ const MainLayout = () => {
         />
       </div>
 
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 overflow-auto">
         <Header 
           selectedLeafNode={selectedLeafNode} 
           expandAll={expandAll}
@@ -128,13 +139,34 @@ const MainLayout = () => {
           onProcessArticles={processArticles}
           isProcessing={isProcessing}
           entries={entries}
+          apiProvider={apiProvider}
+          setApiProvider={setApiProvider}
         />
         <MainContent 
           selectedLeafNode={selectedLeafNode}
           expandAll={expandAll}
           entries={entries}
           darkMode={darkMode}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          apiProvider={apiProvider}
         />
+        <div className={`
+            ${darkMode 
+              ? 'bg-gray-800 border-t border-gray-700' 
+              : 'bg-gray-50 border-t border-gray-200'
+            } 
+            transition-colors duration-200
+        `}>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            darkMode={darkMode}
+          />
+        </div>
+        
       </div>
 
       <LoadingModal 
