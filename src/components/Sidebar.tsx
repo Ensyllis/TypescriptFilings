@@ -1,6 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import DepthSelector from './DepthSelector';
+import debounce from 'lodash/debounce';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Skeleton } from "./ui/skeleton";
+import Image from 'next/image';
 
 interface LeafNodeInfo {
   name: string;
@@ -10,20 +15,31 @@ interface LeafNodeInfo {
 interface SidebarProps {
   onSelectLeafNode: (leafNode: string) => void;
   selectedLeafNode: string | null;
+  currentDepth: number;
+  maxDepth: number;
+  onDepthChange: (depth: number) => void;
+  darkMode: boolean;
+  loading: boolean;
+  setLoading: (loading: boolean) => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onSelectLeafNode, selectedLeafNode }) => {
+const Sidebar: React.FC<SidebarProps> = ({ 
+  onSelectLeafNode, 
+  selectedLeafNode,  
+  currentDepth,
+  maxDepth,
+  onDepthChange,
+  darkMode,
+  loading,
+  setLoading
+}) => {
   const [leafNodes, setLeafNodes] = useState<LeafNodeInfo[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchLeafNodes();
-  }, []);
-
-  const fetchLeafNodes = async () => {
+  const fetchLeafNodes = useCallback(async (depth: number) => {
+    setLoading(true);
     try {
-      const response = await fetch('/api/getLeafNodes');
+      const response = await fetch(`/api/getLeafNodes?depth=${depth}`);
       if (!response.ok) {
         throw new Error('Failed to fetch leaf nodes');
       }
@@ -31,47 +47,80 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelectLeafNode, selectedLeafNode })
       setLeafNodes(data);
     } catch (err) {
       console.error('Error fetching Leaf Nodes:', err);
-      setError('Failed to load Leaf Nodes. Please try again later.');
+      onDepthChange(1);
     } finally {
       setLoading(false);
     }
-  };
-  
-  if (loading) {
-    return <div className="p-4 dark:text-white">Loading Leaf Nodes...</div>;
-  }
+  }, [onDepthChange, setLoading]);
 
-  if (error) {
-    return <div className="p-4 text-red-500 dark:text-red-400">{error}</div>;
-  }
+  const debouncedFetchLeafNodes = useCallback(
+    debounce((depth: number) => {
+      fetchLeafNodes(depth);
+    }, 300),
+    [fetchLeafNodes]
+  );
+
+  useEffect(() => {
+    debouncedFetchLeafNodes(currentDepth);
+    return () => debouncedFetchLeafNodes.cancel();
+  }, [currentDepth, debouncedFetchLeafNodes]);
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-800">
-      <h2 className="text-2xl font-bold p-4 dark:text-white">Leaf Nodes</h2>
-      <div className="flex-grow overflow-y-auto">
-        {leafNodes.map((node) => (
-          <Button
-            key={node.name}
-            variant={selectedLeafNode === node.name ? "default" : "ghost"}
-            className={cn(
-              "w-full justify-start p-2 text-left whitespace-normal break-words",
-              selectedLeafNode === node.name
-                ? "dark:bg-white dark:text-gray-800"
-                : "dark:text-white dark:hover:bg-gray-700"
-            )}
-            onClick={() => onSelectLeafNode(node.name)}
-          >
-            <span className="flex justify-between w-full">
-              <span>{node.name}</span>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {node.percentage}%
-              </span>
-            </span>
-          </Button>
-        ))}
+    <div className={`h-full flex flex-col ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-black'}`}>
+      <h2 className={`text-2xl font-bold p-4 ${darkMode ? 'text-white' : 'text-black'}`}>Leaf Nodes</h2>
+      <div className="px-4 mb-4">
+        <DepthSelector
+          maxDepth={maxDepth}
+          currentDepth={currentDepth}
+          onDepthChange={onDepthChange}
+          darkMode={darkMode}
+        />
       </div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentDepth}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.2 }}
+          className="flex-grow overflow-y-auto"
+        >
+          {loading ? (
+            <div className="flex justify-center items-center h-full">
+              <Image
+                src="/loading.gif"
+                alt="Loading..."
+                width={100}
+                height={100}
+                className="rounded-full"
+              />
+            </div>
+          ) : (
+            leafNodes.map((node) => (
+              <Button
+                key={node.name}
+                variant={selectedLeafNode === node.name ? "default" : "ghost"}
+                className={cn(
+                  "w-full justify-start p-2 text-left whitespace-normal break-words",
+                  selectedLeafNode === node.name
+                    ? "dark:bg-white dark:text-gray-800"
+                    : "dark:text-white dark:hover:bg-gray-700"
+                )}
+                onClick={() => onSelectLeafNode(node.name)}
+              >
+                <span className="flex justify-between w-full">
+                  <span>{node.name}</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {node.percentage}%
+                  </span>
+                </span>
+              </Button>
+            ))
+          )}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 };
 
-export default Sidebar;
+export default React.memo(Sidebar);

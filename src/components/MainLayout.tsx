@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
@@ -9,6 +9,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import MainContent from './MainContent';
 import LoadingModal from './LoadingModal';
+import { on } from 'events';
 
 interface Entry {
   Leaf_Nodes: string;
@@ -24,18 +25,40 @@ const MainLayout = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [sidebarLoading, setSidebarLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingModalOpen, setIsLoadingModalOpen] = useState(false);
   const [apiProvider, setApiProvider] = useState<'anthropic' | 'openai'>('openai');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [pageSize, setPageSize] = useState(100);
+  const [currentDepth, setCurrentDepth] = useState(1);
+  const [maxDepth, setMaxDepth] = useState(1);
+
+  useEffect(() => {
+    fetchMaxDepth();
+  }, []);
 
   useEffect(() => {
     if (selectedLeafNode) {
       fetchEntries();
     }
   }, [selectedLeafNode, currentPage, pageSize]);
+
+  const fetchMaxDepth = async () => {
+    try {
+      const response = await fetch('/api/getMaxDepth');
+      if (!response.ok) {
+        throw new Error('Failed to fetch max depth');
+      }
+      const data = await response.json();
+      console.log('Fetched maxDepth:', data); // Add this line
+      setMaxDepth(data.maxDepth);
+    } catch (err) {
+      console.error('Error fetching max depth:', err);
+      setError('Failed to load max depth. Please try again later.');
+    }
+  };
 
   const fetchEntries = async () => {
     if (!selectedLeafNode) return;
@@ -63,6 +86,11 @@ const MainLayout = () => {
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
   };
+
+  const handleDepthChange = useCallback((newDepth: number) => {
+    console.log('Depth change requested:', newDepth);
+    setCurrentDepth(newDepth);
+  }, []);
 
   const processArticles = async (prompt: string) => {
     setIsProcessing(true);
@@ -117,6 +145,12 @@ const MainLayout = () => {
           <Sidebar
             onSelectLeafNode={setSelectedLeafNode}
             selectedLeafNode={selectedLeafNode}
+            currentDepth={currentDepth}
+            maxDepth={maxDepth}
+            onDepthChange={handleDepthChange}
+            darkMode={darkMode}
+            loading={sidebarLoading}
+            setLoading={setSidebarLoading}
           />
         </SheetContent>
       </Sheet>
@@ -126,6 +160,12 @@ const MainLayout = () => {
         <Sidebar
           onSelectLeafNode={setSelectedLeafNode}
           selectedLeafNode={selectedLeafNode}
+          currentDepth={currentDepth}
+          maxDepth={maxDepth}
+          onDepthChange={handleDepthChange}
+          darkMode={darkMode}
+          loading={sidebarLoading}
+          setLoading={setSidebarLoading}
         />
       </div>
 
