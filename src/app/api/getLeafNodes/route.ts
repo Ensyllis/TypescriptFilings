@@ -36,26 +36,3 @@ export async function GET(req: NextRequest) {
     await client.close();
   }
 }
-
-export async function getMaxDepth() {
-  try {
-    await client.connect();
-    const database = client.db('Bayesian');
-    const collection = database.collection('leaf_nodes');
-
-    const result = await collection.aggregate([
-      { $unwind: "$depth" },  // Deconstruct the depth array
-      { $group: { _id: null, maxDepth: { $max: "$depth" } } }  // Find the max across all depth values
-    ]).toArray();
-
-    const maxDepth = result[0]?.maxDepth || 1;
-    console.log('API: Calculated maxDepth:', maxDepth);  // Add this log
-
-    return NextResponse.json({ maxDepth }, { status: 200 });
-  } catch (error) {
-    console.error('Failed to fetch max depth:', error);
-    return NextResponse.json({ error: 'Failed to fetch max depth' }, { status: 500 });
-  } finally {
-    await client.close();
-  }
-}
